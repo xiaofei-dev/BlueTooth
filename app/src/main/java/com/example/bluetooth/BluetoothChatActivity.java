@@ -219,6 +219,20 @@ public class BluetoothChatActivity extends AppCompatActivity {
                 if (resultCode == Activity.RESULT_OK) {
                     String address = data.getExtras().getString(DeviceListActiity.EXTRA_DEVICE_ADDRESS);
                     BluetoothDevice device = mBluetoothAdapter.getRemoteDevice(address);
+                    if (mChatService != null
+                            && !mChatService.getCacheAddress().isEmpty()
+                            && !mChatService.getCacheAddress().equals(address)){
+                        //连接到一台新设备，需要做些准备工作
+                        mChatService.stop();
+                        mChatService.start();
+                        mHandler.postDelayed(() ->{
+                            //延迟操作，等准备工作做完
+                            assert mChatService != null;
+                            mChatService.connect(device);
+                        }, 1000);
+                        return;
+                    }
+                    assert mChatService != null;
                     mChatService.connect(device);
                 } else if (resultCode == Activity.RESULT_CANCELED) {
                     Toast.makeText(this, "未选择任何好友！", Toast.LENGTH_SHORT).show();
@@ -233,6 +247,7 @@ public class BluetoothChatActivity extends AppCompatActivity {
                 }
         }
     }
+
     private class MyMenuItemClickListener implements Toolbar.OnMenuItemClickListener {
         @Override
         public boolean onMenuItemClick(MenuItem item) {

@@ -60,26 +60,22 @@ public class ChatService {
         return mState;
     }
 
-    public synchronized void start() {
-        if (mConnectThread != null) {
-            mConnectThread.cancel();
-            mConnectThread = null;
-        }
-        if (mConnectedThread != null) {
-            mConnectedThread.cancel();
-            mConnectedThread = null;
-        }
-        if (mAcceptThread == null) {
-            mAcceptThread = new AcceptThread();
-            mAcceptThread.start();
-        }
-        setState(STATE_LISTEN, "");
+    public synchronized String getCacheAddress() {
+        return mCacheAddress;
     }
 
     //取消 CONNECTING 和 CONNECTED 状态下的相关线程，然后运行新的 mConnectThread 线程
     public synchronized void connect(BluetoothDevice device) {
-        if (!mCacheAddress.isEmpty() && device.getAddress().equals(mCacheAddress)){
-            return;
+        if (!mCacheAddress.isEmpty()){
+            if (device.getAddress().equals(mCacheAddress)){
+                //还是连接同一个设备，啥操作也不用做
+                return;
+            } else {
+                //连接一个新设备//???
+                //setState(STATE_LISTEN, "");
+                //stop();
+                //start();
+            }
         }
         if (mState == STATE_CONNECTING) {
             if (mConnectThread != null) {
@@ -128,6 +124,22 @@ public class ChatService {
         mHandler.sendMessage(msg);
         setState(STATE_CONNECTED, device.getAddress());
 
+    }
+
+    public synchronized void start() {
+        if (mConnectThread != null) {
+            mConnectThread.cancel();
+            mConnectThread = null;
+        }
+        if (mConnectedThread != null) {
+            mConnectedThread.cancel();
+            mConnectedThread = null;
+        }
+        if (mAcceptThread == null) {
+            mAcceptThread = new AcceptThread();
+            mAcceptThread.start();
+        }
+        setState(STATE_LISTEN, "");
     }
 
     // 停止所有相关线程，设当前状态为 NONE
@@ -183,6 +195,8 @@ public class ChatService {
         start();
     }
 
+    //-----------------------↓三个用于内部类，开子线程处理业务逻辑----------------------------
+
     // 创建监听线程，准备接受新连接。使用阻塞方式，调用 BluetoothServerSocket.accept()
     private class AcceptThread extends Thread {
         private final BluetoothServerSocket mmServerSocket;
@@ -193,6 +207,7 @@ public class ChatService {
                 //使用射频端口（RF comm）监听
                 tmp = mAdapter.listenUsingRfcommWithServiceRecord(NAME, MY_UUID);
             } catch (IOException e) {
+                e.printStackTrace();
             }
             mmServerSocket = tmp;
         }
