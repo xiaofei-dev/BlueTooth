@@ -183,7 +183,7 @@ public class ChatService {
         start();
     }
 
-    // 当连接失去(中断)的时候，设为 STATE_LISTEN 状态并通知 ui
+    //当连接失去(中断)的时候，设为 STATE_LISTEN 状态并通知 ui
     private void connectionLost() {
         setState(STATE_LISTEN, "");
         Message msg = mHandler.obtainMessage(BluetoothChatActivity.MESSAGE_TOAST);

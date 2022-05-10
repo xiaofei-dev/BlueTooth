@@ -20,4 +20,7 @@
     <string name="back">退出</string>
     <string name="startVideo">开始聊天</string>
     <string name="stopVideo">结束聊天</string>
+
+    <string name="mac_1">20:F4:78:04:C2:E5</string><!--k20 pro-->
+    <string name="mac_2">50:8F:4C:E4:48:9C</string><!--mi6-->
 </resources>

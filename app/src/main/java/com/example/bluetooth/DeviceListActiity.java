@@ -26,7 +26,9 @@ public class DeviceListActiity extends AppCompatActivity {
 
     public static final String TAG = "device";
     private BluetoothAdapter mBtAdapter;
+    //已配对设备列表
     private ArrayAdapter<String> mPairedDevicesArrayAdapter;
+    //未配对设备列表
     private ArrayAdapter<String> mNewDevicesArrayAdapter;
     public static String EXTRA_DEVICE_ADDRESS = "device_address";  //Mac地址
     //定义广播接收者，用于处理扫描蓝牙设备后的结果
@@ -84,6 +86,7 @@ public class DeviceListActiity extends AppCompatActivity {
         registerReceiver(mReceiver, filter);
         filter = new IntentFilter(BluetoothAdapter.ACTION_DISCOVERY_FINISHED);
         registerReceiver(mReceiver, filter);
+        //开始获取已配对蓝牙设备列表
         mBtAdapter = BluetoothAdapter.getDefaultAdapter();
         Set<BluetoothDevice> pairedDevices = mBtAdapter.getBondedDevices();
         if (pairedDevices.size() > 0) {
