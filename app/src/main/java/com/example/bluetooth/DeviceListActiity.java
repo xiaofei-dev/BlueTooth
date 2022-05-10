@@ -37,10 +37,11 @@ public class DeviceListActiity extends AppCompatActivity {
             if (BluetoothDevice.ACTION_FOUND.equals(action)) {
                 BluetoothDevice device = intent.getParcelableExtra(BluetoothDevice.EXTRA_DEVICE);
                 if (device.getBondState() != BluetoothDevice.BOND_BONDED) {
-                    if (device.getBluetoothClass().getMajorDeviceClass()
+                    /*if (device.getBluetoothClass().getMajorDeviceClass()
                             == android.bluetooth.BluetoothClass.Device.Major.PHONE){
                         mNewDevicesArrayAdapter.add(device.getName() + "\n" + device.getAddress());
-                    }
+                    }*/
+                    mNewDevicesArrayAdapter.add(device.getName() + "\n" + device.getAddress());
                 }
             } else if (BluetoothAdapter.ACTION_DISCOVERY_FINISHED.equals(action)) {
                 if (mNewDevicesArrayAdapter.getCount() == 0) {
@@ -88,10 +89,11 @@ public class DeviceListActiity extends AppCompatActivity {
         if (pairedDevices.size() > 0) {
             findViewById(R.id.title_paired_devices).setVisibility(View.VISIBLE);
             for (BluetoothDevice device : pairedDevices) {
-                if (device.getBluetoothClass().getMajorDeviceClass()
+                /*if (device.getBluetoothClass().getMajorDeviceClass()
                         == android.bluetooth.BluetoothClass.Device.Major.PHONE){
                     mPairedDevicesArrayAdapter.add(device.getName() + "\n" + device.getAddress());
-                }
+                }*/
+                mPairedDevicesArrayAdapter.add(device.getName() + "\n" + device.getAddress());
             }
         } else {
             String noDevices = getResources().getText(R.string.none_paired).toString();
