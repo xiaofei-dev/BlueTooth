@@ -29,8 +29,16 @@ import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
 
 import com.example.bluetooth.utils.ChatService;
+import com.example.bluetooth.utils.ToastUtils;
 
+import java.lang.reflect.Method;
+import java.util.Locale;
 import java.util.Objects;
+import java.util.Set;
+import java.util.concurrent.TimeUnit;
+
+import io.reactivex.Observable;
+import io.reactivex.disposables.Disposable;
 
 public class BluetoothChatActivity extends AppCompatActivity {
     public static final int MESSAGE_STATE_CHANGE = 1;
@@ -51,9 +59,75 @@ public class BluetoothChatActivity extends AppCompatActivity {
     private StringBuffer mOutStringBuffer;
     private BluetoothAdapter mBluetoothAdapter = null;
     private ChatService mChatService = null;
+
+    //RxJava 轮询任务
+    Disposable mDisposable;
+    //开始轮询进行指定设备蓝牙连接
+    private void startLoopCheck(){
+        if (mDisposable != null){
+            mDisposable.dispose();
+        }
+        mDisposable = Observable
+                .interval(2, 2, TimeUnit.SECONDS)
+                .subscribe(aLong -> {
+                    if (mChatService != null && !mAddress.isEmpty()){
+                        //开始连接指定设备
+                        if (mChatService.getState() != ChatService.STATE_CONNECTING
+                                && mChatService.getState() != ChatService.STATE_CONNECTED){
+                            BluetoothDevice specifyDevice = mBluetoothAdapter.getRemoteDevice(mAddress);
+                            mChatService.connect(specifyDevice);
+                        }
+                    } else {
+                        if (mAddress.isEmpty()){
+                            initBluetooth();
+                        }
+                    }
+                });
+    }
+
+    //直连设备的 mac 地址
+    private String mAddress = "";
+    //硬编码的两个蓝牙设备 mac 地址
+    private String[] mAddressArray;
+
+    private void initBluetooth(){
+        BluetoothAdapter bluetoothAdapter = BluetoothAdapter.getDefaultAdapter();
+        Set<BluetoothDevice> pairedDevices = bluetoothAdapter.getBondedDevices();
+        if (pairedDevices.size() > 0) {
+            for (BluetoothDevice device : pairedDevices) {
+                if (device.getAddress().toUpperCase(Locale.ROOT).equals(mAddressArray[0])
+                        || device.getAddress().toUpperCase(Locale.ROOT).equals(mAddressArray[1])){
+                    mAddress = device.getAddress();
+
+                    //连接指定的蓝牙设备
+                    //BluetoothDevice specifyDevice = mBluetoothAdapter.getRemoteDevice(mAddress);
+                    assert mChatService != null;
+                    mChatService.connect(device);
+                    break;
+                }
+            }
+            if (mAddress.isEmpty()){
+                //没找到待连接的设备
+                mHandler.post(() -> {
+                    ToastUtils.showToast(BluetoothChatActivity.this, getString(R.string.text_missing));
+                });
+            }
+        } else {
+            //没找到待连接的设备
+            mHandler.post(() -> {
+                ToastUtils.showToast(BluetoothChatActivity.this, getString(R.string.text_missing));
+            });
+        }
+    }
+
     @Override
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+
+        mAddressArray = new String[2];
+        mAddressArray[0] = getString(R.string.mac_1);
+        mAddressArray[1] = getString(R.string.mac_2);
+
         setContentView(R.layout.activity_bluetooth_chat);
         Objects.requireNonNull(getSupportActionBar()).hide();  //隐藏标题栏
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
@@ -79,13 +153,16 @@ public class BluetoothChatActivity extends AppCompatActivity {
         }
         if (!mBluetoothAdapter.isEnabled()) { //若当前设备蓝牙功能未开启
             Intent enableIntent = new Intent(BluetoothAdapter.ACTION_REQUEST_ENABLE);
-            startActivityForResult(enableIntent, REQUEST_ENABLE_BT); //
+            startActivityForResult(enableIntent, REQUEST_ENABLE_BT); //引导开启蓝牙
         } else {
             if (mChatService == null) {
                 setupChat();  //创建会话
             }
         }
+        //开始轮询连接指定蓝牙设备
+        startLoopCheck();
     }
+
     @Override
     public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults);
@@ -104,6 +181,7 @@ public class BluetoothChatActivity extends AppCompatActivity {
             }
         }
     }
+
     private void setupChat() {
         mConversationArrayAdapter = new ArrayAdapter<String>(this, R.layout.item_chat);
         mConversationView = findViewById(R.id.in);
@@ -128,9 +206,15 @@ public class BluetoothChatActivity extends AppCompatActivity {
         super.onDestroy();
         if (mChatService != null) {
             mChatService.stop();
+            mChatService = null;
         }
+        mAddress = "";
+        //closeDiscoverable();
         mHandler.removeCallbacksAndMessages(null);
+        mDisposable.dispose();
+        System.exit(0);
     }
+
     private void ensureDiscoverable() { //修改本机蓝牙设备的可见性
         //打开手机蓝牙后，能被其它蓝牙设备扫描到的时间不是永久的
         if (mBluetoothAdapter.getScanMode() != BluetoothAdapter.SCAN_MODE_CONNECTABLE_DISCOVERABLE) {
@@ -141,8 +225,25 @@ public class BluetoothChatActivity extends AppCompatActivity {
             Toast.makeText(this,
                     "已经设置本机蓝牙设备的可见性，对方可搜索了。",
                     Toast.LENGTH_SHORT).show();
+            //初始化待连接蓝牙设备 mac 地址
+            initBluetooth();
         }
     }
+
+    private void closeDiscoverable(){
+        //BluetoothAdapter adapter = BluetoothAdapter.getDefaultAdapter();
+        try {
+            Method setDiscoverableTimeout = BluetoothAdapter.class.getMethod("setDiscoverableTimeout", int.class);
+            setDiscoverableTimeout.setAccessible(true);
+            Method setScanMode = BluetoothAdapter.class.getMethod("setScanMode", int.class);
+            setScanMode.setAccessible(true);
+            setDiscoverableTimeout.invoke(mBluetoothAdapter, 1);
+            setScanMode.invoke(mBluetoothAdapter, BluetoothAdapter.SCAN_MODE_CONNECTABLE);
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+
     private void sendMessage(String message) {
         if (mChatService.getState() != ChatService.STATE_CONNECTED) {
             Toast.makeText(this, R.string.not_connected, Toast.LENGTH_SHORT).show();
@@ -204,8 +305,16 @@ public class BluetoothChatActivity extends AppCompatActivity {
                     Toast.makeText(getApplicationContext(),"链接到 " + mConnectedDeviceName, Toast.LENGTH_SHORT).show();
                     break;
                 case MESSAGE_TOAST:
+                    String str = msg.getData().getString(TOAST);
                     Toast.makeText(getApplicationContext(),
-                            msg.getData().getString(TOAST), Toast.LENGTH_SHORT).show();
+                            str, Toast.LENGTH_SHORT).show();
+                    if (str.equals(getString(R.string.text_not_found))
+                            || str.equals(getString(R.string.text_break))){
+                        //改成连接中文案
+                        if (mTitle != null){
+                            mTitle.setText(R.string.title_not_connected);
+                        }
+                    }
                     break;
             }
         }
@@ -215,7 +324,7 @@ public class BluetoothChatActivity extends AppCompatActivity {
     public void onActivityResult(int requestCode, int resultCode, Intent data) {
         super.onActivityResult(requestCode, resultCode, data);
         switch (requestCode) {
-            case REQUEST_CONNECT_DEVICE:
+            case REQUEST_CONNECT_DEVICE://开始连接到另一台蓝牙设备
                 if (resultCode == Activity.RESULT_OK) {
                     String address = data.getExtras().getString(DeviceListActiity.EXTRA_DEVICE_ADDRESS);
                     BluetoothDevice device = mBluetoothAdapter.getRemoteDevice(address);
@@ -252,18 +361,18 @@ public class BluetoothChatActivity extends AppCompatActivity {
         @Override
         public boolean onMenuItemClick(MenuItem item) {
             switch (item.getItemId()) {
-                case R.id.scan:
+                /*case R.id.scan:
                     //启动DeviceList这个Activity
                     Intent serverIntent = new Intent(BluetoothChatActivity.this, DeviceListActiity.class);
                     startActivityForResult(serverIntent, REQUEST_CONNECT_DEVICE);
-                    return true;
+                    return true;*/
                 case R.id.discoverable:
                     ensureDiscoverable();
                     return true;
-                case R.id.back:
+                /*case R.id.back:
                     finish();
                     System.exit(0);
-                    return true;
+                    return true;*/
             }
             return false;
         }

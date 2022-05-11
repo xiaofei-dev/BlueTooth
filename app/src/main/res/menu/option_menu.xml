@@ -2,15 +2,15 @@
 <menu xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools">
-    <item
+    <!--<item
         android:id="@+id/scan"
-        android:title="@string/connect"/>
+        android:title="@string/connect"/>-->
 
     <item
         android:id="@+id/discoverable"
         android:title="@string/discoverable"/>
 
-    <item
+    <!--<item
         android:id="@+id/back"
-        android:title="@string/back"/>
+        android:title="@string/back"/>-->
 </menu>

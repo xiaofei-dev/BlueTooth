@@ -10,6 +10,7 @@ import android.os.Handler;
 import android.os.Message;
 
 import com.example.bluetooth.BluetoothChatActivity;
+import com.example.bluetooth.R;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -33,9 +34,10 @@ public class ChatService {
     public static final int STATE_LISTEN = 1;
     public static final int STATE_CONNECTING = 2;
     public static final int STATE_CONNECTED = 3;
-
+    private  Context mContext;
     //构造方法，接收UI主线程传递的对象
     public ChatService(Context context, Handler handler) {
+        mContext = context;
         //构造方法完成蓝牙对象的创建
         mAdapter = BluetoothAdapter.getDefaultAdapter();
         mState = STATE_NONE;
@@ -176,7 +178,7 @@ public class ChatService {
         setState(STATE_LISTEN, "");
         Message msg = mHandler.obtainMessage(BluetoothChatActivity.MESSAGE_TOAST);
         Bundle bundle = new Bundle();
-        bundle.putString(BluetoothChatActivity.TOAST, "链接不到设备");
+        bundle.putString(BluetoothChatActivity.TOAST, mContext.getString(R.string.text_not_found));
         msg.setData(bundle);
         mHandler.sendMessage(msg);
         stop();
@@ -188,7 +190,7 @@ public class ChatService {
         setState(STATE_LISTEN, "");
         Message msg = mHandler.obtainMessage(BluetoothChatActivity.MESSAGE_TOAST);
         Bundle bundle = new Bundle();
-        bundle.putString(BluetoothChatActivity.TOAST, "设备链接中断");
+        bundle.putString(BluetoothChatActivity.TOAST, mContext.getString(R.string.text_break));
         msg.setData(bundle);
         mHandler.sendMessage(msg);
         stop();
@@ -277,8 +279,9 @@ public class ChatService {
                 try {
                     mmSocket.close();
                 } catch (IOException e2) {
-                    e.printStackTrace();
+                    e2.printStackTrace();
                 }
+                //ChatService.this.stop();
                 ChatService.this.start();
                 return;
             }
